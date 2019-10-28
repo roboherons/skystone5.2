@@ -98,7 +98,7 @@ public class AutoTest2020 extends LinearOpMode {
         BNO055IMU.Parameters params = new BNO055IMU.Parameters();
 
         params.mode = BNO055IMU.SensorMode.IMU;
-        params.angleUnit = BNO055IMU.AngleUnit.RADIANS;
+        params.angleUnit = BNO055IMU.AngleUnit.DEGREES;
         params.accelUnit = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
         params.loggingEnabled = false;
 
@@ -136,31 +136,7 @@ public class AutoTest2020 extends LinearOpMode {
         telemetry.addData("Dist Read: ", dist.getDistance(DistanceUnit.METER));
         telemetry.update();
 
-
-        forward(0.1);
-
-        while(dist.getDistance(DistanceUnit.METER)>0.5 && opModeIsActive())
-        {
-            telemetry.addData("Dist Read: ", dist.getDistance(DistanceUnit.METER));
-            telemetry.update();
-        }
-
-        halt();
-
-        rotate(180, 0.3);
-
-        telemetry.addData("Dist Read: ", dist.getDistance(DistanceUnit.METER));
-        telemetry.update();
-
-        forward(0.1);
-
-        while(dist.getDistance(DistanceUnit.METER)>1.5 && opModeIsActive())
-        {
-            telemetry.addData("Dist Read: ", dist.getDistance(DistanceUnit.METER));
-            telemetry.update();
-        }
-
-        halt();
+        controlStraif(0.2);
     }
 
     public void forward(double x)
@@ -179,6 +155,15 @@ public class AutoTest2020 extends LinearOpMode {
 
         LBDrive.setPower(x);
         RBDrive.setPower(-x);
+    }
+
+    public  void distPower(double lf, double rf, double lb, double rb)
+    {
+        LFDrive.setPower(-lf);
+        RFDrive.setPower(-rf);
+
+        LBDrive.setPower(-lb);
+        RBDrive.setPower(-rb);
     }
 
     public void halt()
@@ -312,5 +297,35 @@ public class AutoTest2020 extends LinearOpMode {
 
         // reset angle tracking on new heading.
         resetAngle();
+    }
+
+    private void controlStraif(double meters)
+    {
+        double forwardDiff = 0.0;
+        double thetaDiff = 0.0;
+
+        while(opModeIsActive())
+        {
+            if(dist.getDistance(DistanceUnit.METER) > meters)
+            {
+                forwardDiff = 0.5;
+            }
+            else if(dist.getDistance(DistanceUnit.METER) < meters)
+            {
+                forwardDiff = -0.5;
+            }
+
+            if(getAngle() > 3)
+            {
+                thetaDiff = -0.05;
+            }
+            else if(getAngle() < -3)
+            {
+                thetaDiff = 0.05;
+            }
+
+            distPower(-0.7+forwardDiff+thetaDiff, 0.7+forwardDiff-thetaDiff, 0.7+forwardDiff+thetaDiff, -0.7+forwardDiff-thetaDiff);
+        }
+        halt();
     }
 }
