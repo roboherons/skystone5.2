@@ -65,7 +65,7 @@ import org.firstinspires.ftc.robotcontroller.external.samples.HardwarePushbot;
  */
 
 @Autonomous(name="Pushbot: Auto Drive By Encoder", group="Pushbot")
-@Disabled
+//@Disabled
 public class PushbotAutoDriveByEncoder_Linear extends LinearOpMode {
 
     /* Declare OpMode members. */
@@ -96,6 +96,12 @@ public class PushbotAutoDriveByEncoder_Linear extends LinearOpMode {
 
         LBDrive  = hardwareMap.get(DcMotor.class, "lbdrive");
         RBDrive = hardwareMap.get(DcMotor.class, "rbdrive");
+
+        LFDrive.setDirection(DcMotor.Direction.REVERSE);
+        RFDrive.setDirection(DcMotor.Direction.FORWARD);
+
+        LBDrive.setDirection(DcMotor.Direction.REVERSE);
+        RBDrive.setDirection(DcMotor.Direction.FORWARD);
 
         // Send telemetry message to signify robot waiting;
         telemetry.addData("Status", "Resetting Encoders");    //
@@ -171,8 +177,11 @@ public class PushbotAutoDriveByEncoder_Linear extends LinearOpMode {
 
             // reset the timeout time and start motion.
             runtime.reset();
-            robot.leftDrive.setPower(Math.abs(speed));
-            robot.rightDrive.setPower(Math.abs(speed));
+            LFDrive.setPower(Math.abs(speed));
+            RFDrive.setPower(Math.abs(speed));
+
+            LBDrive.setPower(Math.abs(speed));
+            RBDrive.setPower(Math.abs(speed));
 
             // keep looping while we are still active, and there is time left, and both motors are running.
             // Note: We use (isBusy() && isBusy()) in the loop test, which means that when EITHER motor hits
@@ -182,23 +191,29 @@ public class PushbotAutoDriveByEncoder_Linear extends LinearOpMode {
             // onto the next step, use (isBusy() || isBusy()) in the loop test.
             while (opModeIsActive() &&
                    (runtime.seconds() < timeoutS) &&
-                   (robot.leftDrive.isBusy() && robot.rightDrive.isBusy())) {
+                   (LFDrive.isBusy() && RFDrive.isBusy())) {
 
                 // Display it for the driver.
                 telemetry.addData("Path1",  "Running to %7d :%7d", newLeftTarget,  newRightTarget);
                 telemetry.addData("Path2",  "Running at %7d :%7d",
-                                            robot.leftDrive.getCurrentPosition(),
-                                            robot.rightDrive.getCurrentPosition());
+                                            LFDrive.getCurrentPosition(),
+                                            RFDrive.getCurrentPosition());
                 telemetry.update();
             }
 
             // Stop all motion;
-            robot.leftDrive.setPower(0);
-            robot.rightDrive.setPower(0);
+            LFDrive.setPower(0);
+            RFDrive.setPower(0);
+
+            LBDrive.setPower(0);
+            RBDrive.setPower(0);
 
             // Turn off RUN_TO_POSITION
-            robot.leftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            robot.rightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            LFDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            RFDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+            LBDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            RBDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
             //  sleep(250);   // optional pause after each move
         }

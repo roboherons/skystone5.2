@@ -34,6 +34,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.GyroSensor;
@@ -72,10 +73,15 @@ public class AutoTest2020 extends LinearOpMode {
     private DcMotor RFDrive = null;
     private DcMotor LBDrive = null;
     private DcMotor RBDrive = null;
-    private DistanceSensor dist;
+    private DistanceSensor LDist;
+    private DistanceSensor RDist;
+    private DistanceSensor BDist;
+    private ColorSensor RColor;
+    private ColorSensor LColor;
     private BNO055IMU imu;
     private Orientation ori = new Orientation();
     private double globalAngle;
+    private double alpha;
 
 
     @Override
@@ -93,8 +99,15 @@ public class AutoTest2020 extends LinearOpMode {
         LBDrive  = hardwareMap.get(DcMotor.class, "lbdrive");
         RBDrive = hardwareMap.get(DcMotor.class, "rbdrive");
 
-        dist = hardwareMap.get(DistanceSensor.class, "dist");
+        //initializing dist sensors L = left front, R = right front, B = Back
+        LDist = hardwareMap.get(DistanceSensor.class, "ldist");
+        RDist = hardwareMap.get(DistanceSensor.class, "rdist");
+        BDist = hardwareMap.get(DistanceSensor.class, "bdist");
 
+        LColor = hardwareMap.get(ColorSensor.class, "lcolor");
+        RColor = hardwareMap.get(ColorSensor.class, "rcolor");
+
+        //initializing IMU
         BNO055IMU.Parameters params = new BNO055IMU.Parameters();
 
         params.mode = BNO055IMU.SensorMode.IMU;
@@ -109,12 +122,14 @@ public class AutoTest2020 extends LinearOpMode {
         telemetry.addData("Mode", "calibrating...");
         telemetry.update();
 
+        //setting direction of motors
         LFDrive.setDirection(DcMotor.Direction.REVERSE);
         RFDrive.setDirection(DcMotor.Direction.FORWARD);
 
         LBDrive.setDirection(DcMotor.Direction.REVERSE);
         RBDrive.setDirection(DcMotor.Direction.FORWARD);
 
+        //more IMU
         while (!isStopRequested() && !imu.isGyroCalibrated())
         {
             sleep(50);
@@ -133,21 +148,78 @@ public class AutoTest2020 extends LinearOpMode {
 
         // run until the end of the match (driver presses STOP)
 
-        telemetry.addData("Dist Read: ", dist.getDistance(DistanceUnit.METER));
+
+        /*telemetry.addData("LDist Read: ", LDist.getDistance(DistanceUnit.METER));
+        telemetry.addData("RDist Read: ", RDist.getDistance(DistanceUnit.METER));
+        telemetry.addData("BDist Read: ", BDist.getDistance(DistanceUnit.METER));
         telemetry.update();
 
-        controlStraif(0.2);
+        runtime.reset();
+        while (opModeIsActive() && (runtime.seconds() < 15.0)) {
+            telemetry.addData("Path", "Leg 1: %2.5f S Elapsed", runtime.seconds());
+            telemetry.addData("LDist Read: ", LDist.getDistance(DistanceUnit.METER));
+            telemetry.addData("RDist Read: ", RDist.getDistance(DistanceUnit.METER));
+            telemetry.addData("BDist Read: ", BDist.getDistance(DistanceUnit.METER));
+            telemetry.update();
+        }*/
+
+        runtime.reset();
+        while (((RDist.getDistance(DistanceUnit.METER) > 1.5) || (LDist.getDistance(DistanceUnit.METER) > 1.5)) && opModeIsActive())
+        {
+            controlStraif(0.2, false, BDist, false);
+            telemetry.addData("LDist Read: ", LDist.getDistance(DistanceUnit.METER));
+            telemetry.addData("RDist Read: ", RDist.getDistance(DistanceUnit.METER));
+            telemetry.addData("BDist Read: ", BDist.getDistance(DistanceUnit.METER));
+            telemetry.update();
+        }
+        halt();
+
+        runtime.reset();
+        while (opModeIsActive() && (runtime.seconds() < 0.5)) {}
+
+        alpha = calColor(RColor);
+
+        runtime.reset();
+        while (opModeIsActive() && (runtime.seconds() < 0.25)) {}
+
+        while (RDist.getDistance(DistanceUnit.METER) > 0.075 && LDist.getDistance(DistanceUnit.METER) > 0.075  && opModeIsActive())
+        {
+            forward(0.2);
+            telemetry.addData("PHASE: ", "TWO");
+            telemetry.addData("LDist Read: ", LDist.getDistance(DistanceUnit.METER));
+            telemetry.addData("RDist Read: ", RDist.getDistance(DistanceUnit.METER));
+            telemetry.addData("BDist Read: ", BDist.getDistance(DistanceUnit.METER));
+            telemetry.update();
+        }
+        halt();
+
+        runtime.reset();
+        while (opModeIsActive() && (runtime.seconds() < 0.25) && opModeIsActive()) {}
+
+        while (RColor.alpha() > 800)
+        {
+            controlStraif(0.05, false, RDist, true);
+            /*telemetry.addData("LDist Read: ", LDist.getDistance(DistanceUnit.METER));
+            telemetry.addData("RDist Read: ", RDist.getDistance(DistanceUnit.METER));
+            telemetry.addData("BDist Read: ", BDist.getDistance(DistanceUnit.METER));*/
+            telemetry.addData("Alpha", RColor.alpha());
+            telemetry.update();
+        }
+        halt();
+        //controlStraif(0.1, false, RDist, true);
     }
 
+    //goes forward with a power of x... surprise
     public void forward(double x)
     {
-        LFDrive.setPower(-x);
-        RFDrive.setPower(-x);
+        LFDrive.setPower(x);
+        RFDrive.setPower(x);
 
-        LBDrive.setPower(-x);
-        RBDrive.setPower(-x);
+        LBDrive.setPower(x);
+        RBDrive.setPower(x);
     }
 
+    //straifs to left when positive or right when negative (85% sure)
     public void straif(double x)
     {
         LFDrive.setPower(-x);
@@ -157,15 +229,17 @@ public class AutoTest2020 extends LinearOpMode {
         RBDrive.setPower(-x);
     }
 
+    //lets you give power to each wheel separately
     public  void distPower(double lf, double rf, double lb, double rb)
     {
-        LFDrive.setPower(-lf);
-        RFDrive.setPower(-rf);
+        LFDrive.setPower(lf);
+        RFDrive.setPower(rf);
 
-        LBDrive.setPower(-lb);
-        RBDrive.setPower(-rb);
+        LBDrive.setPower(lb);
+        RBDrive.setPower(rb);
     }
 
+    //stops the robot, a stop function terminates the program so instead we have to call it halt
     public void halt()
     {
         LFDrive.setPower(0);
@@ -178,6 +252,8 @@ public class AutoTest2020 extends LinearOpMode {
     /**
      * Resets the cumulative angle tracking to zero.
      */
+    //I copied these from the internet
+    //This sets the desired angle to whatever its facing at the moment
     private void resetAngle()
     {
         ori = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
@@ -189,6 +265,7 @@ public class AutoTest2020 extends LinearOpMode {
      * Get current cumulative angle rotation from last reset.
      * @return Angle in degrees. + = left, - = right.
      */
+    // I don't know what this does, at some point I did, but not know
     private double getAngle()
     {
         // We experimentally determined the Z axis is the axis we want to use for heading angle.
@@ -299,20 +376,39 @@ public class AutoTest2020 extends LinearOpMode {
         resetAngle();
     }
 
-    private void controlStraif(double meters)
+    private double calColor(ColorSensor color)
+    {
+        int counter = 1;
+        double aveAlpha = color.alpha();
+
+        while (RDist.getDistance(DistanceUnit.METER) > 0.3 && LDist.getDistance(DistanceUnit.METER) > 0.3  && opModeIsActive())
+        {
+            forward(0.5);
+            aveAlpha = ((aveAlpha*counter)+color.alpha())/(counter+1);
+            counter++;
+            telemetry.addData("Ave Alpha: ", aveAlpha);
+        }
+        halt();
+        return aveAlpha;
+    }
+
+
+    // This is the only good thing I have actually done this entire year
+    // It uses distance sensors to stay close to the wall
+    // Also uses IMU to keep its orientation stable
+    private void controlStraif(double meters, boolean direction, DistanceSensor dist, boolean front)
     {
         double forwardDiff = 0.0;
         double thetaDiff = 0.0;
+        double power = 0.5;
 
-        while(opModeIsActive())
-        {
             if(dist.getDistance(DistanceUnit.METER) > meters)
             {
-                forwardDiff = 0.5;
+                forwardDiff = 0.05;
             }
             else if(dist.getDistance(DistanceUnit.METER) < meters)
             {
-                forwardDiff = -0.5;
+                forwardDiff = -0.05;
             }
 
             if(getAngle() > 3)
@@ -324,8 +420,19 @@ public class AutoTest2020 extends LinearOpMode {
                 thetaDiff = 0.05;
             }
 
-            distPower(-0.7+forwardDiff+thetaDiff, 0.7+forwardDiff-thetaDiff, 0.7+forwardDiff+thetaDiff, -0.7+forwardDiff-thetaDiff);
-        }
-        halt();
+            if(!front)
+            {
+                forwardDiff = -forwardDiff;
+            }
+
+            if(direction)
+            {
+                distPower(-power + forwardDiff + thetaDiff, power + forwardDiff - thetaDiff, power + forwardDiff + thetaDiff, -power + forwardDiff - thetaDiff);
+            }
+            else
+            {
+                distPower(power + forwardDiff - thetaDiff, -power + forwardDiff + thetaDiff, -power + forwardDiff - thetaDiff, power + forwardDiff + thetaDiff);
+            }
     }
 }
+
